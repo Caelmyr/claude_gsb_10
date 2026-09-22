@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识图谱系统 - 文档管理</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 导航栏 */
+        .navbar {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            color: #aaa;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: rgba(0,210,255,0.2);
+            color: #00d2ff;
+        }
+
+        /* 主要内容 */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .panel-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #00d2ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #00d2ff;
+            border-radius: 2px;
+        }
+
+        /* 上传区域 */
+        .upload-zone {
+            border: 2px dashed rgba(0,210,255,0.3);
+            border-radius: 15px;
+            padding: 60px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .upload-zone:hover {
+            border-color: #00d2ff;
+            background: rgba(0,210,255,0.05);
+        }
+
+        .upload-zone.dragover {
+            border-color: #00d2ff;
+            background: rgba(0,210,255,0.1);
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #aaa;
+        }
+
+        .upload-hint {
+            font-size: 14px;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        /* 文件输入 */
+        #fileInput {
+            display: none;
+        }
+
+        /* 按钮 */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,210,255,0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: rgba(255,107,107,0.2);
+            color: #ff6b6b;
+        }
+
+        /* 文档列表 */
+        .doc-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .doc-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .doc-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .doc-info {
+            flex: 1;
+        }
+
+        .doc-name {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .doc-meta {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .doc-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* 预览区域 */
+        .preview-area {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        /* 解析结果 */
+        .parse-result {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+
+        .result-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 14px;
+            color: #00d2ff;
+        }
+
+        /* 实体标签 */
+        .entity-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .entity-tag {
+            background: rgba(0,210,255,0.2);
+            color: #00d2ff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .entity-tag.person { background: rgba(255,107,107,0.2); color: #ff6b6b; }
+        .entity-tag.org { background: rgba(78,205,196,0.2); color: #4ecdc4; }
+        .entity-tag.location { background: rgba(255,209,102,0.2); color: #ffd166; }
+        .entity-tag.time { background: rgba(168,130,255,0.2); color: #a882ff; }
+
+        /* 加载动画 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0,210,255,0.2);
+            border-top-color: #00d2ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* 三元组列表 */
+        .triple-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .triple-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .triple-subject {
+            color: #ff6b6b;
+        }
+
+        .triple-predicate {
+            color: #ffd166;
+        }
+
+        .triple-object {
+            color: #4ecdc4;
+        }
+
+        /* 统计卡片 */
+        .stat-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #00d2ff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #888;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="navbar">
+            <div class="logo">📚 知识图谱问答系统</div>
+            <div class="nav-links">
+                <a href="/" class="active">📄 文档管理</a>
+                <a href="/annotate.html">🏷️ 实体标注</a>
+                <a href="/graph.html">🕸️ 知识图谱</a>
+                <a href="/chat.html">💬 智能问答</a>
+                <a href="/stats.html">📊 统计面板</a>
+            </div>
+        </nav>
+
+        <!-- 统计卡片 -->
+        <div class="stat-cards">
+            <div class="stat-card">
+                <div class="stat-value" id="docCount">0</div>
+                <div class="stat-label">文档数量</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="entityCount">0</div>
+                <div class="stat-label">实体数量</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="relationCount">0</div>
+                <div class="stat-label">关系数量</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- 左侧：上传和文档列表 -->
+            <div>
+                <div class="panel">
+                    <h2 class="panel-title">上传文档</h2>
+                    <div class="upload-zone" id="uploadZone">
+                        <div class="upload-icon">📁</div>
+                        <div class="upload-text">点击或拖拽文件到此处上传</div>
+                        <div class="upload-hint">支持 TXT、PDF 格式</div>
+                    </div>
+                    <input type="file" id="fileInput" accept=".txt,.pdf">
+                    <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()" style="width:100%">
+                        选择文件
+                    </button>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <h2 class="panel-title">文档列表</h2>
+                    <div class="doc-list" id="docList">
+                        <div style="text-align:center;color:#888;padding:40px;">暂无文档</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：预览和解析 -->
+            <div>
+                <div class="panel">
+                    <h2 class="panel-title">文档预览</h2>
+                    <div class="preview-area" id="previewArea">
+                        <div style="text-align:center;color:#888;padding:40px;">选择文档查看预览</div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <h2 class="panel-title">解析结果</h2>
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <div>正在解析文档...</div>
+                    </div>
+                    <div id="parseResult">
+                        <div style="text-align:center;color:#888;padding:40px;">上传并解析文档后显示结果</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let currentDocId = null;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDocuments();
+            loadStatistics();
+            setupDragDrop();
+        });
+
+        // 设置拖拽上传
+        function setupDragDrop() {
+            const zone = document.getElementById('uploadZone');
+
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('dragover');
+            });
+
+            zone.addEventListener('dragleave', () => {
+                zone.classList.remove('dragover');
+            });
+
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    uploadFile(files[0]);
+                }
+            });
+
+            zone.addEventListener('click', () => {
+                document.getElementById('fileInput').click();
+            });
+
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    uploadFile(e.target.files[0]);
+                }
+            });
+        }
+
+        // 上传文件
+        async function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch(`${API_BASE}/api/documents/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('文档上传成功！');
+                    loadDocuments();
+                    showPreview(data.document.id, data.text_preview);
+                } else {
+                    alert('上传失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('上传失败: ' + error.message);
+            }
+        }
+
+        // 加载文档列表
+        async function loadDocuments() {
+            try {
+                const response = await fetch(`${API_BASE}/api/documents`);
+                const data = await response.json();
+
+                const list = document.getElementById('docList');
+                document.getElementById('docCount').textContent = data.documents.length;
+
+                if (data.documents.length === 0) {
+                    list.innerHTML = '<div style="text-align:center;color:#888;padding:40px;">暂无文档</div>';
+                    return;
+                }
+
+                list.innerHTML = data.documents.map(doc => `
+                    <div class="doc-item">
+                        <div class="doc-info">
+                            <div class="doc-name">${doc.filename}</div>
+                            <div class="doc-meta">${formatDate(doc.upload_time)} · ${doc.text_length} 字符</div>
+                        </div>
+                        <div class="doc-actions">
+                            <button class="btn btn-secondary btn-sm" onclick="viewDocument('${doc.id}')">查看</button>
+                            <button class="btn btn-primary btn-sm" onclick="parseDocument('${doc.id}')">解析</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('加载文档失败:', error);
+            }
+        }
+
+        // 加载统计信息
+        async function loadStatistics() {
+            try {
+                const response = await fetch(`${API_BASE}/api/graph/statistics`);
+                const data = await response.json();
+
+                document.getElementById('entityCount').textContent = data.total_entities;
+                document.getElementById('relationCount').textContent = data.total_relations;
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        // 查看文档
+        async function viewDocument(docId) {
+            currentDocId = docId;
+            try {
+                const response = await fetch(`${API_BASE}/api/documents/${docId}`);
+                const data = await response.json();
+
+                showPreview(docId, data.full_text || data.text_preview);
+            } catch (error) {
+                console.error('获取文档失败:', error);
+            }
+        }
+
+        // 显示预览
+        function showPreview(docId, text) {
+            document.getElementById('previewArea').textContent = text || '无预览内容';
+        }
+
+        // 解析文档
+        async function parseDocument(docId) {
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('parseResult');
+
+            loading.classList.add('active');
+            result.innerHTML = '';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/documents/${docId}/parse`, {
+                    method: 'POST'
+                });
+
+                const data = await response.json();
+
+                loading.classList.remove('active');
+
+                if (data.success) {
+                    showParseResult(data);
+                    loadStatistics();
+                } else {
+                    result.innerHTML = `<div style="color:#ff6b6b;">解析失败: ${data.error}</div>`;
+                }
+            } catch (error) {
+                loading.classList.remove('active');
+                result.innerHTML = `<div style="color:#ff6b6b;">解析失败: ${error.message}</div>`;
+            }
+        }
+
+        // 显示解析结果
+        function showParseResult(data) {
+            const result = document.getElementById('parseResult');
+
+            const entitiesHtml = data.entities.slice(0, 20).map(e =>
+                `<span class="entity-tag ${e.type.toLowerCase()}">${e.text} (${e.type})</span>`
+            ).join('');
+
+            const triplesHtml = data.triples.slice(0, 15).map(t => `
+                <div class="triple-item">
+                    <span class="triple-subject">${t[0]}</span>
+                    <span class="triple-predicate">—${t[1]}→</span>
+                    <span class="triple-object">${t[2]}</span>
+                </div>
+            `).join('');
+
+            result.innerHTML = `
+                <div class="stat-cards">
+                    <div class="stat-card">
+                        <div class="stat-value">${data.entities_count}</div>
+                        <div class="stat-label">提取实体</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.relations_count}</div>
+                        <div class="stat-label">提取关系</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${data.triples.length}</div>
+                        <div class="stat-label">三元组</div>
+                    </div>
+                </div>
+
+                <div class="result-item">
+                    <div class="result-label">识别实体</div>
+                    <div class="entity-tags">${entitiesHtml}</div>
+                </div>
+
+                <div class="result-item" style="margin-top:15px;">
+                    <div class="result-label">提取三元组</div>
+                    <div class="triple-list">${triplesHtml}</div>
+                </div>
+            `;
+        }
+
+        // 格式化日期
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            return date.toLocaleDateString('zh-CN') + ' ' + date.toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'});
+        }
+    </script>
+</body>
+</html>

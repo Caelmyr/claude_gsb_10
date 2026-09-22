@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识图谱系统 - 实体关系标注</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 导航栏 */
+        .navbar {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            color: #aaa;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: rgba(0,210,255,0.2);
+            color: #00d2ff;
+        }
+
+        /* 主要内容 */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .panel-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #00d2ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #00d2ff;
+            border-radius: 2px;
+        }
+
+        /* 文本选择区域 */
+        .text-area {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 400px;
+            font-size: 16px;
+            line-height: 1.8;
+            position: relative;
+        }
+
+        .text-content {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .text-content .highlight {
+            background: rgba(0,210,255,0.3);
+            padding: 2px 4px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .text-content .highlight.person { background: rgba(255,107,107,0.3); }
+        .text-content .highlight.org { background: rgba(78,205,196,0.3); }
+        .text-content .highlight.location { background: rgba(255,209,102,0.3); }
+        .text-content .highlight.time { background: rgba(168,130,255,0.3); }
+        .text-content .highlight.concept { background: rgba(102,255,204,0.3); }
+
+        /* 标注工具栏 */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tool-btn {
+            padding: 8px 16px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .tool-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .tool-btn.active {
+            border-color: #00d2ff;
+            background: rgba(0,210,255,0.2);
+        }
+
+        .tool-btn.person { border-color: #ff6b6b; }
+        .tool-btn.person.active { background: rgba(255,107,107,0.2); }
+        .tool-btn.org { border-color: #4ecdc4; }
+        .tool-btn.org.active { background: rgba(78,205,196,0.2); }
+        .tool-btn.location { border-color: #ffd166; }
+        .tool-btn.location.active { background: rgba(255,209,102,0.2); }
+        .tool-btn.time { border-color: #a882ff; }
+        .tool-btn.time.active { background: rgba(168,130,255,0.2); }
+
+        /* 标注面板 */
+        .annotation-panel {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 5px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #00d2ff;
+        }
+
+        /* 按钮 */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,210,255,0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: rgba(255,107,107,0.2);
+            color: #ff6b6b;
+        }
+
+        /* 实体列表 */
+        .entity-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .entity-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .entity-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .entity-type-badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .entity-type-badge.person { background: rgba(255,107,107,0.2); color: #ff6b6b; }
+        .entity-type-badge.org { background: rgba(78,205,196,0.2); color: #4ecdc4; }
+        .entity-type-badge.location { background: rgba(255,209,102,0.2); color: #ffd166; }
+        .entity-type-badge.time { background: rgba(168,130,255,0.2); color: #a882ff; }
+        .entity-type-badge.concept { background: rgba(102,255,204,0.2); color: #66ffcc; }
+
+        /* 关系列表 */
+        .relation-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .relation-subject { color: #ff6b6b; }
+        .relation-predicate { color: #ffd166; }
+        .relation-object { color: #4ecdc4; }
+
+        /* 关系添加区 */
+        .relation-add {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 10px;
+            align-items: end;
+            margin-top: 20px;
+        }
+
+        /* 选择弹窗 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #00d2ff;
+        }
+
+        /* 文档选择 */
+        .doc-select {
+            margin-bottom: 20px;
+        }
+
+        .doc-select select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="navbar">
+            <div class="logo">📚 知识图谱问答系统</div>
+            <div class="nav-links">
+                <a href="/">📄 文档管理</a>
+                <a href="/annotate.html" class="active">🏷️ 实体标注</a>
+                <a href="/graph.html">🕸️ 知识图谱</a>
+                <a href="/chat.html">💬 智能问答</a>
+                <a href="/stats.html">📊 统计面板</a>
+            </div>
+        </nav>
+
+        <div class="main-content">
+            <!-- 左侧：文本选择和标注 -->
+            <div>
+                <div class="panel">
+                    <h2 class="panel-title">选择文档</h2>
+                    <div class="doc-select">
+                        <select id="docSelect" onchange="loadDocument()">
+                            <option value="">请选择文档</option>
+                        </select>
+                    </div>
+
+                    <h2 class="panel-title">标注工具</h2>
+                    <div class="toolbar">
+                        <button class="tool-btn person" data-type="PERSON" onclick="selectTool('PERSON')">
+                            👤 人物
+                        </button>
+                        <button class="tool-btn org" data-type="ORG" onclick="selectTool('ORG')">
+                            🏢 组织
+                        </button>
+                        <button class="tool-btn location" data-type="LOCATION" onclick="selectTool('LOCATION')">
+                            📍 地点
+                        </button>
+                        <button class="tool-btn time" data-type="TIME" onclick="selectTool('TIME')">
+                            ⏰ 时间
+                        </button>
+                        <button class="tool-btn concept" data-type="CONCEPT" onclick="selectTool('CONCEPT')">
+                            💡 概念
+                        </button>
+                        <button class="tool-btn" onclick="selectTool('RELATION')">
+                            🔗 关系
+                        </button>
+                    </div>
+
+                    <h2 class="panel-title">文档内容</h2>
+                    <div class="text-area" id="textArea">
+                        <div class="text-content" id="textContent">
+                            请先选择一个文档进行标注
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：标注结果 -->
+            <div>
+                <div class="panel">
+                    <h2 class="panel-title">实体标注</h2>
+                    <div class="entity-list" id="entityList">
+                        <div style="text-align:center;color:#888;padding:40px;">选择文本后点击实体类型进行标注</div>
+                    </div>
+
+                    <div class="annotation-panel" id="entityForm">
+                        <h3 style="margin-bottom:15px;">手动添加实体</h3>
+                        <div class="form-group">
+                            <label>实体文本</label>
+                            <input type="text" id="entityText" placeholder="输入实体文本">
+                        </div>
+                        <div class="form-group">
+                            <label>实体类型</label>
+                            <select id="entityType">
+                                <option value="PERSON">人物</option>
+                                <option value="ORG">组织</option>
+                                <option value="LOCATION">地点</option>
+                                <option value="TIME">时间</option>
+                                <option value="CONCEPT">概念</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" onclick="addEntity()">添加实体</button>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top: 20px;">
+                    <h2 class="panel-title">关系标注</h2>
+                    <div class="entity-list" id="relationList">
+                        <div style="text-align:center;color:#888;padding:40px;">添加实体后可建立关系</div>
+                    </div>
+
+                    <div class="annotation-panel">
+                        <h3 style="margin-bottom:15px;">添加关系</h3>
+                        <div class="relation-add">
+                            <div class="form-group">
+                                <label>主语实体</label>
+                                <select id="subjectSelect">
+                                    <option value="">选择主语</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>关系类型</label>
+                                <select id="predicateSelect">
+                                    <option value="属于">属于</option>
+                                    <option value="位于">位于</option>
+                                    <option value="参与">参与</option>
+                                    <option value="包含">包含</option>
+                                    <option value="相关">相关</option>
+                                    <option value="创建">创建</option>
+                                    <option value="使用">使用</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>宾语实体</label>
+                                <select id="objectSelect">
+                                    <option value="">选择宾语</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="addRelation()" style="margin-top:10px;">添加关系</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let currentDocId = null;
+        let currentTool = null;
+        let entities = [];
+        let relations = [];
+        let fullText = '';
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDocuments();
+        });
+
+        // 加载文档列表
+        async function loadDocuments() {
+            try {
+                const response = await fetch(`${API_BASE}/api/documents`);
+                const data = await response.json();
+
+                const select = document.getElementById('docSelect');
+                select.innerHTML = '<option value="">请选择文档</option>';
+
+                data.documents.forEach(doc => {
+                    select.innerHTML += `<option value="${doc.id}">${doc.filename}</option>`;
+                });
+            } catch (error) {
+                console.error('加载文档失败:', error);
+            }
+        }
+
+        // 加载文档内容
+        async function loadDocument() {
+            const select = document.getElementById('docSelect');
+            currentDocId = select.value;
+
+            if (!currentDocId) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/api/documents/${currentDocId}`);
+                const data = await response.json();
+
+                fullText = data.full_text || data.text_preview || '';
+                document.getElementById('textContent').textContent = fullText;
+            } catch (error) {
+                console.error('加载文档失败:', error);
+            }
+        }
+
+        // 选择标注工具
+        function selectTool(type) {
+            currentTool = type;
+
+            // 更新按钮状态
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.type === type || (type === 'RELATION' && btn.textContent.includes('关系'))) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // 文本选择事件
+        document.getElementById('textContent').addEventListener('mouseup', function() {
+            const selection = window.getSelection();
+            const selectedText = selection.toString().trim();
+
+            if (selectedText && currentTool && currentTool !== 'RELATION') {
+                addEntityDirectly(selectedText, currentTool);
+            }
+        });
+
+        // 直接添加实体
+        function addEntityDirectly(text, type) {
+            // 检查是否已存在
+            if (entities.some(e => e.text === text && e.type === type)) {
+                alert('该实体已存在');
+                return;
+            }
+
+            const entity = { text, type };
+            entities.push(entity);
+
+            // 标记文本
+            highlightText(text, type);
+
+            // 发送到服务器
+            saveEntity(entity);
+
+            // 更新显示
+            updateEntityList();
+            updateSelects();
+        }
+
+        // 高亮文本
+        function highlightText(text, type) {
+            const content = document.getElementById('textContent');
+            const html = content.innerHTML;
+            const highlighted = `<span class="highlight ${type.toLowerCase()}" title="${type}">${text}</span>`;
+            content.innerHTML = html.replace(text, highlighted);
+        }
+
+        // 保存实体到服务器
+        async function saveEntity(entity) {
+            try {
+                await fetch(`${API_BASE}/api/annotate/entity`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: entity.text,
+                        type: entity.type,
+                        doc_id: currentDocId
+                    })
+                });
+            } catch (error) {
+                console.error('保存实体失败:', error);
+            }
+        }
+
+        // 手动添加实体
+        function addEntity() {
+            const text = document.getElementById('entityText').value.trim();
+            const type = document.getElementById('entityType').value;
+
+            if (!text) {
+                alert('请输入实体文本');
+                return;
+            }
+
+            addEntityDirectly(text, type);
+            document.getElementById('entityText').value = '';
+        }
+
+        // 更新实体列表显示
+        function updateEntityList() {
+            const list = document.getElementById('entityList');
+
+            if (entities.length === 0) {
+                list.innerHTML = '<div style="text-align:center;color:#888;padding:40px;">暂无标注实体</div>';
+                return;
+            }
+
+            list.innerHTML = entities.map((e, i) => `
+                <div class="entity-item">
+                    <div class="entity-info">
+                        <span class="entity-type-badge ${e.type.toLowerCase()}">${e.type}</span>
+                        <span>${e.text}</span>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="removeEntity(${i})">删除</button>
+                </div>
+            `).join('');
+        }
+
+        // 删除实体
+        function removeEntity(index) {
+            entities.splice(index, 1);
+            updateEntityList();
+            updateSelects();
+        }
+
+        // 更新下拉选择框
+        function updateSelects() {
+            const subjectSelect = document.getElementById('subjectSelect');
+            const objectSelect = document.getElementById('objectSelect');
+
+            const options = entities.map(e =>
+                `<option value="${e.text}">${e.text} (${e.type})</option>`
+            ).join('');
+
+            subjectSelect.innerHTML = '<option value="">选择主语</option>' + options;
+            objectSelect.innerHTML = '<option value="">选择宾语</option>' + options;
+        }
+
+        // 添加关系
+        async function addRelation() {
+            const subject = document.getElementById('subjectSelect').value;
+            const predicate = document.getElementById('predicateSelect').value;
+            const object = document.getElementById('objectSelect').value;
+
+            if (!subject || !object) {
+                alert('请选择主语和宾语实体');
+                return;
+            }
+
+            if (subject === object) {
+                alert('主语和宾语不能相同');
+                return;
+            }
+
+            // 查找实体类型
+            const subjectEntity = entities.find(e => e.text === subject);
+            const objectEntity = entities.find(e => e.text === object);
+
+            const relation = {
+                subject,
+                subject_type: subjectEntity?.type || 'OTHER',
+                predicate,
+                object,
+                object_type: objectEntity?.type || 'OTHER'
+            };
+
+            relations.push(relation);
+
+            // 发送到服务器
+            try {
+                await fetch(`${API_BASE}/api/annotate/relation`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(relation)
+                });
+            } catch (error) {
+                console.error('保存关系失败:', error);
+            }
+
+            updateRelationList();
+        }
+
+        // 更新关系列表显示
+        function updateRelationList() {
+            const list = document.getElementById('relationList');
+
+            if (relations.length === 0) {
+                list.innerHTML = '<div style="text-align:center;color:#888;padding:40px;">暂无关系</div>';
+                return;
+            }
+
+            list.innerHTML = relations.map((r, i) => `
+                <div class="relation-item">
+                    <span class="relation-subject">${r.subject}</span>
+                    <span class="relation-predicate">—${r.predicate}→</span>
+                    <span class="relation-object">${r.object}</span>
+                    <button class="btn btn-danger btn-sm" onclick="removeRelation(${i})" style="margin-left:auto;">删除</button>
+                </div>
+            `).join('');
+        }
+
+        // 删除关系
+        function removeRelation(index) {
+            relations.splice(index, 1);
+            updateRelationList();
+        }
+    </script>
+</body>
+</html>

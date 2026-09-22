@@ -1,0 +1,5 @@
+flask==3.0.0
+flask-cors==4.0.0
+jieba==0.42.1
+pdfplumber==0.10.3
+thulac==1.2.0

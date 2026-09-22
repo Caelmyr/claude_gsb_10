@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识图谱系统 - 统计面板</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 导航栏 */
+        .navbar {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            color: #aaa;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: rgba(0,210,255,0.2);
+            color: #00d2ff;
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255,255,255,0.08);
+        }
+
+        .stat-icon {
+            font-size: 36px;
+            margin-bottom: 15px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #888;
+            margin-top: 8px;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-change.positive {
+            color: #4ecdc4;
+        }
+
+        .stat-change.negative {
+            color: #ff6b6b;
+        }
+
+        /* 图表容器 */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .chart-title {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #00d2ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* 数据表格 */
+        .table-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+
+        .table-title {
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #00d2ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        th {
+            color: #888;
+            font-weight: normal;
+            font-size: 13px;
+        }
+
+        td {
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .type-badge.PERSON { background: rgba(255,107,107,0.2); color: #ff6b6b; }
+        .type-badge.ORG { background: rgba(78,205,196,0.2); color: #4ecdc4; }
+        .type-badge.LOCATION { background: rgba(255,209,102,0.2); color: #ffd166; }
+        .type-badge.TIME { background: rgba(168,130,255,0.2); color: #a882ff; }
+        .type-badge.CONCEPT { background: rgba(102,255,204,0.2); color: #66ffcc; }
+
+        /* 热门实体 */
+        .hot-entity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .hot-rank {
+            width: 24px;
+            height: 24px;
+            background: rgba(0,210,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #00d2ff;
+        }
+
+        .hot-name {
+            flex: 1;
+            font-size: 14px;
+        }
+
+        .hot-count {
+            font-size: 14px;
+            color: #00d2ff;
+        }
+
+        /* 刷新按钮 */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,210,255,0.3);
+        }
+
+        /* 加载动画 */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0,210,255,0.2);
+            border-top-color: #00d2ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="navbar">
+            <div class="logo">📚 知识图谱问答系统</div>
+            <div class="nav-links">
+                <a href="/">📄 文档管理</a>
+                <a href="/annotate.html">🏷️ 实体标注</a>
+                <a href="/graph.html">🕸️ 知识图谱</a>
+                <a href="/chat.html">💬 智能问答</a>
+                <a href="/stats.html" class="active">📊 统计面板</a>
+            </div>
+        </nav>
+
+        <!-- 统计卡片 -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">📄</div>
+                <div class="stat-value" id="docCount">0</div>
+                <div class="stat-label">文档总数</div>
+                <div class="stat-change positive">
+                    <span>↑</span> 系统运行中
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🏷️</div>
+                <div class="stat-value" id="entityCount">0</div>
+                <div class="stat-label">实体总数</div>
+                <div class="stat-change positive">
+                    <span>●</span> 已索引
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔗</div>
+                <div class="stat-value" id="relationCount">0</div>
+                <div class="stat-label">关系总数</div>
+                <div class="stat-change positive">
+                    <span>●</span> 已建立
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💬</div>
+                <div class="stat-value" id="sessionCount">0</div>
+                <div class="stat-label">问答会话</div>
+                <div class="stat-change positive">
+                    <span>●</span> 进行中
+                </div>
+            </div>
+        </div>
+
+        <!-- 图表 -->
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">📊 实体类型分布</div>
+                <div class="chart-container">
+                    <canvas id="entityTypeChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">📈 关系类型分布</div>
+                <div class="chart-container">
+                    <canvas id="relationTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <div class="chart-title">🔥 热门实体 TOP 10</div>
+                <div id="hotEntities">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-card">
+                <div class="chart-title">📋 最近三元组</div>
+                <div id="recentTriples" style="max-height:300px;overflow-y:auto;">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <div class="table-card">
+            <div class="table-title">
+                <span>📝 实体详情列表</span>
+                <button class="btn btn-primary" onclick="refreshData()">刷新数据</button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>实体名称</th>
+                            <th>类型</th>
+                            <th>出现次数</th>
+                            <th>关联关系</th>
+                        </tr>
+                    </thead>
+                    <tbody id="entityTableBody">
+                        <tr>
+                            <td colspan="4" style="text-align:center;color:#888;">加载中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let entityTypeChart, relationTypeChart;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAllData();
+        });
+
+        // 加载所有数据
+        async function loadAllData() {
+            await Promise.all([
+                loadStatistics(),
+                loadGraphData(),
+                loadSessions()
+            ]);
+        }
+
+        // 加载统计信息
+        async function loadStatistics() {
+            try {
+                const response = await fetch(`${API_BASE}/api/graph/statistics`);
+                const data = await response.json();
+
+                document.getElementById('entityCount').textContent = data.total_entities;
+                document.getElementById('relationCount').textContent = data.total_relations;
+
+                // 绘制实体类型分布图
+                drawEntityTypeChart(data.entity_counts);
+            } catch (error) {
+                console.error('加载统计失败:', error);
+            }
+        }
+
+        // 加载图谱数据
+        async function loadGraphData() {
+            try {
+                const response = await fetch(`${API_BASE}/api/graph/data`);
+                const data = await response.json();
+
+                // 统计关系类型
+                const relationTypes = {};
+                data.links.forEach(link => {
+                    const type = link.label || '未知';
+                    relationTypes[type] = (relationTypes[type] || 0) + 1;
+                });
+
+                drawRelationTypeChart(relationTypes);
+
+                // 热门实体
+                const sortedNodes = [...data.nodes].sort((a, b) => b.count - a.count).slice(0, 10);
+                drawHotEntities(sortedNodes);
+
+                // 实体表格
+                drawEntityTable(data.nodes);
+
+                // 最近三元组
+                const triples = data.links.map(l => ({
+                    subject: data.nodes.find(n => n.id === l.source)?.label || l.source,
+                    predicate: l.label,
+                    object: data.nodes.find(n => n.id === l.target)?.label || l.target
+                })).slice(0, 20);
+                drawRecentTriples(triples);
+            } catch (error) {
+                console.error('加载图谱数据失败:', error);
+            }
+        }
+
+        // 加载会话
+        async function loadSessions() {
+            try {
+                const response = await fetch(`${API_BASE}/api/qa/sessions`);
+                const data = await response.json();
+                document.getElementById('sessionCount').textContent = data.sessions.length;
+            } catch (error) {
+                console.error('加载会话失败:', error);
+            }
+        }
+
+        // 绘制实体类型分布图
+        function drawEntityTypeChart(entityCounts) {
+            const ctx = document.getElementById('entityTypeChart').getContext('2d');
+
+            if (entityTypeChart) {
+                entityTypeChart.destroy();
+            }
+
+            const labels = Object.keys(entityCounts);
+            const values = Object.values(entityCounts);
+            const colors = [
+                '#ff6b6b', '#4ecdc4', '#ffd166', '#a882ff', '#66ffcc', '#888'
+            ];
+
+            entityTypeChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: colors.slice(0, labels.length),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                color: '#fff',
+                                padding: 15,
+                                usePointStyle: true,
+                                pointStyleWidth: 10,
+                                font: { size: 12 }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 绘制关系类型分布图
+        function drawRelationTypeChart(relationTypes) {
+            const ctx = document.getElementById('relationTypeChart').getContext('2d');
+
+            if (relationTypeChart) {
+                relationTypeChart.destroy();
+            }
+
+            const labels = Object.keys(relationTypes);
+            const values = Object.values(relationTypes);
+
+            relationTypeChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '关系数量',
+                        data: values,
+                        backgroundColor: 'rgba(0, 210, 255, 0.5)',
+                        borderColor: '#00d2ff',
+                        borderWidth: 1,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#888' },
+                            grid: { color: 'rgba(255,255,255,0.1)' }
+                        },
+                        y: {
+                            ticks: { color: '#888' },
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // 绘制热门实体
+        function drawHotEntities(entities) {
+            const container = document.getElementById('hotEntities');
+
+            if (entities.length === 0) {
+                container.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">暂无数据</div>';
+                return;
+            }
+
+            container.innerHTML = entities.map((entity, i) => `
+                <div class="hot-entity">
+                    <div class="hot-rank">${i + 1}</div>
+                    <div class="hot-name">${entity.label}</div>
+                    <span class="type-badge ${entity.type}">${entity.type}</span>
+                    <div class="hot-count">${entity.count}</div>
+                </div>
+            `).join('');
+        }
+
+        // 绘制实体表格
+        function drawEntityTable(nodes) {
+            const tbody = document.getElementById('entityTableBody');
+
+            if (nodes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888;">暂无数据</td></tr>';
+                return;
+            }
+
+            const sortedNodes = [...nodes].sort((a, b) => b.count - a.count);
+
+            tbody.innerHTML = sortedNodes.slice(0, 50).map(node => `
+                <tr>
+                    <td>${node.label}</td>
+                    <td><span class="type-badge ${node.type}">${node.type}</span></td>
+                    <td>${node.count}</td>
+                    <td><a href="/graph.html" style="color:#00d2ff;text-decoration:none;">查看关系 →</a></td>
+                </tr>
+            `).join('');
+        }
+
+        // 绘制最近三元组
+        function drawRecentTriples(triples) {
+            const container = document.getElementById('recentTriples');
+
+            if (triples.length === 0) {
+                container.innerHTML = '<div style="text-align:center;color:#888;padding:20px;">暂无数据</div>';
+                return;
+            }
+
+            container.innerHTML = triples.map(triple => `
+                <div style="display:flex;align-items:center;gap:10px;padding:8px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:6px;font-size:13px;">
+                    <span style="color:#ff6b6b;">${triple.subject}</span>
+                    <span style="color:#ffd166;">—${triple.predicate}→</span>
+                    <span style="color:#4ecdc4;">${triple.object}</span>
+                </div>
+            `).join('');
+        }
+
+        // 刷新数据
+        function refreshData() {
+            loadAllData();
+        }
+    </script>
+</body>
+</html>

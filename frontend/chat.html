@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识图谱系统 - 智能问答</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* 导航栏 */
+        .navbar {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .nav-links a {
+            color: #aaa;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            background: rgba(0,210,255,0.2);
+            color: #00d2ff;
+        }
+
+        /* 主要内容 */
+        .main-content {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 30px;
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+            padding: 25px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .panel-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+            color: #00d2ff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .panel-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #00d2ff;
+            border-radius: 2px;
+        }
+
+        /* 会话列表 */
+        .session-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .session-item {
+            padding: 12px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .session-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .session-item.active {
+            background: rgba(0,210,255,0.2);
+            border-left: 3px solid #00d2ff;
+        }
+
+        .session-title {
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .session-meta {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            color: #fff;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0,210,255,0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: rgba(255,107,107,0.2);
+            color: #ff6b6b;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        /* 聊天区域 */
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 180px);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px 15px 0 0;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message.assistant {
+            align-items: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-bubble {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-meta {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .message-sources {
+            margin-top: 8px;
+            padding: 8px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .source-tag {
+            display: inline-block;
+            background: rgba(0,210,255,0.2);
+            color: #00d2ff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 2px;
+        }
+
+        /* 输入区域 */
+        .chat-input {
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 0 0 15px 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-wrapper textarea {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            resize: none;
+            height: 50px;
+            font-family: inherit;
+        }
+
+        .input-wrapper textarea:focus {
+            outline: none;
+            border-color: #00d2ff;
+        }
+
+        .input-wrapper button {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #00d2ff, #3a7bd5);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .input-wrapper button:hover {
+            transform: translateY(-2px);
+        }
+
+        .input-wrapper button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 快捷问题 */
+        .quick-questions {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .quick-btn {
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 20px;
+            color: #aaa;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s;
+        }
+
+        .quick-btn:hover {
+            background: rgba(0,210,255,0.2);
+            color: #00d2ff;
+        }
+
+        /* 加载动画 */
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #888;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        /* 相关实体 */
+        .related-entities {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .entity-chip {
+            background: rgba(0,210,255,0.2);
+            color: #00d2ff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 导航栏 -->
+        <nav class="navbar">
+            <div class="logo">📚 知识图谱问答系统</div>
+            <div class="nav-links">
+                <a href="/">📄 文档管理</a>
+                <a href="/annotate.html">🏷️ 实体标注</a>
+                <a href="/graph.html">🕸️ 知识图谱</a>
+                <a href="/chat.html" class="active">💬 智能问答</a>
+                <a href="/stats.html">📊 统计面板</a>
+            </div>
+        </nav>
+
+        <div class="main-content">
+            <!-- 左侧会话管理 -->
+            <div>
+                <div class="panel">
+                    <h2 class="panel-title">会话管理</h2>
+                    <button class="btn btn-primary" onclick="createSession()" style="margin-bottom:20px;">
+                        ➕ 新建会话
+                    </button>
+                    <div class="session-list" id="sessionList">
+                        <div class="empty-state">
+                            <div>暂无会话</div>
+                            <div style="font-size:12px;margin-top:5px;">点击上方按钮创建新会话</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" style="margin-top:20px;">
+                    <h2 class="panel-title">快捷问题</h2>
+                    <div class="quick-questions">
+                        <button class="quick-btn" onclick="askQuickQuestion('知识图谱中有哪些实体？')">有哪些实体？</button>
+                        <button class="quick-btn" onclick="askQuickQuestion('这些实体之间有什么关系？')">实体关系？</button>
+                        <button class="quick-btn" onclick="askQuickQuestion('请介绍一下主要的人物')">主要人物</button>
+                        <button class="quick-btn" onclick="askQuickQuestion('有哪些组织机构？')">组织机构</button>
+                        <button class="quick-btn" onclick="askQuickQuestion('发生了哪些重要事件？')">重要事件</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧聊天区域 -->
+            <div class="panel" style="padding:0;overflow:hidden;">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="empty-state">
+                            <div class="empty-icon">💬</div>
+                            <div>开始与知识图谱对话</div>
+                            <div style="font-size:13px;margin-top:10px;color:#666;">
+                                您可以询问关于文档中实体和关系的问题
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input">
+                        <div class="input-wrapper">
+                            <textarea id="questionInput" placeholder="输入您的问题..." onkeydown="handleKeyDown(event)"></textarea>
+                            <button onclick="askQuestion()" id="sendBtn">发送</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+        let currentSessionId = null;
+        let isProcessing = false;
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSessions();
+        });
+
+        // 加载会话列表
+        async function loadSessions() {
+            try {
+                const response = await fetch(`${API_BASE}/api/qa/sessions`);
+                const data = await response.json();
+
+                const list = document.getElementById('sessionList');
+
+                if (data.sessions.length === 0) {
+                    list.innerHTML = `
+                        <div class="empty-state">
+                            <div>暂无会话</div>
+                            <div style="font-size:12px;margin-top:5px;">点击上方按钮创建新会话</div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = data.sessions.map(session => `
+                    <div class="session-item ${session.id === currentSessionId ? 'active' : ''}"
+                         onclick="selectSession('${session.id}')">
+                        <div class="session-title">${session.title}</div>
+                        <div class="session-meta">${session.message_count} 条消息 · ${formatDate(session.updated_at)}</div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('加载会话失败:', error);
+            }
+        }
+
+        // 创建新会话
+        async function createSession() {
+            try {
+                const response = await fetch(`${API_BASE}/api/qa/sessions`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: `会话 ${new Date().toLocaleString('zh-CN')}` })
+                });
+
+                const data = await response.json();
+                currentSessionId = data.session_id;
+
+                loadSessions();
+                clearChat();
+            } catch (error) {
+                console.error('创建会话失败:', error);
+            }
+        }
+
+        // 选择会话
+        async function selectSession(sessionId) {
+            currentSessionId = sessionId;
+            loadSessions();
+            await loadSessionMessages(sessionId);
+        }
+
+        // 加载会话消息
+        async function loadSessionMessages(sessionId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/qa/sessions/${sessionId}/messages`);
+                const data = await response.json();
+
+                const chatMessages = document.getElementById('chatMessages');
+
+                if (data.messages.length === 0) {
+                    chatMessages.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-icon">💬</div>
+                            <div>开始与知识图谱对话</div>
+                            <div style="font-size:13px;margin-top:10px;color:#666;">
+                                您可以询问关于文档中实体和关系的问题
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                chatMessages.innerHTML = data.messages.map(msg => createMessageHTML(msg)).join('');
+                scrollToBottom();
+            } catch (error) {
+                console.error('加载消息失败:', error);
+            }
+        }
+
+        // 创建消息HTML
+        function createMessageHTML(message) {
+            const isUser = message.role === 'user';
+            const time = formatDate(message.timestamp);
+
+            let sourcesHTML = '';
+            if (message.metadata && message.metadata.sources && message.metadata.sources.length > 0) {
+                sourcesHTML = `
+                    <div class="message-sources">
+                        <div style="margin-bottom:4px;color:#888;">参考来源:</div>
+                        ${message.metadata.sources.map(s => `<span class="source-tag">${s}</span>`).join('')}
+                    </div>
+                `;
+            }
+
+            let entitiesHTML = '';
+            if (message.metadata && message.metadata.related_entities && message.metadata.related_entities.length > 0) {
+                entitiesHTML = `
+                    <div class="related-entities">
+                        ${message.metadata.related_entities.map(e =>
+                            `<span class="entity-chip">${e.text} (${e.type})</span>`
+                        ).join('')}
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="message ${isUser ? 'user' : 'assistant'}">
+                    <div class="message-bubble">${formatMessage(message.content)}</div>
+                    ${sourcesHTML}
+                    ${entitiesHTML}
+                    <div class="message-meta">${time}</div>
+                </div>
+            `;
+        }
+
+        // 格式化消息内容
+        function formatMessage(content) {
+            // 简单的Markdown格式支持
+            return content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+        }
+
+        // 清空聊天
+        function clearChat() {
+            document.getElementById('chatMessages').innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">💬</div>
+                    <div>开始与知识图谱对话</div>
+                    <div style="font-size:13px;margin-top:10px;color:#666;">
+                        您可以询问关于文档中实体和关系的问题
+                    </div>
+                </div>
+            `;
+        }
+
+        // 提问
+        async function askQuestion() {
+            const input = document.getElementById('questionInput');
+            const question = input.value.trim();
+
+            if (!question || isProcessing) return;
+
+            // 如果没有会话，先创建
+            if (!currentSessionId) {
+                await createSession();
+            }
+
+            isProcessing = true;
+            document.getElementById('sendBtn').disabled = true;
+
+            // 添加用户消息
+            addMessage('user', question);
+            input.value = '';
+
+            // 显示加载状态
+            showTypingIndicator();
+
+            try {
+                const response = await fetch(`${API_BASE}/api/qa/ask`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: question,
+                        session_id: currentSessionId
+                    })
+                });
+
+                const data = await response.json();
+
+                // 隐藏加载状态
+                hideTypingIndicator();
+
+                // 添加助手回复
+                addMessage('assistant', data.answer, {
+                    sources: data.sources,
+                    related_entities: data.related_entities,
+                    confidence: data.confidence
+                });
+
+                // 更新会话ID
+                if (data.session_id && !currentSessionId) {
+                    currentSessionId = data.session_id;
+                }
+
+                loadSessions();
+            } catch (error) {
+                hideTypingIndicator();
+                addMessage('assistant', '抱歉，处理您的问题时出现错误，请稍后重试。');
+                console.error('问答失败:', error);
+            }
+
+            isProcessing = false;
+            document.getElementById('sendBtn').disabled = false;
+        }
+
+        // 快捷问题
+        function askQuickQuestion(question) {
+            document.getElementById('questionInput').value = question;
+            askQuestion();
+        }
+
+        // 添加消息到界面
+        function addMessage(role, content, metadata = {}) {
+            const chatMessages = document.getElementById('chatMessages');
+
+            // 移除空状态
+            const emptyState = chatMessages.querySelector('.empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+
+            const message = {
+                role: role,
+                content: content,
+                timestamp: new Date().toISOString(),
+                metadata: metadata
+            };
+
+            chatMessages.innerHTML += createMessageHTML(message);
+            scrollToBottom();
+        }
+
+        // 显示加载状态
+        function showTypingIndicator() {
+            const chatMessages = document.getElementById('chatMessages');
+            const indicator = document.createElement('div');
+            indicator.className = 'message assistant';
+            indicator.id = 'typingIndicator';
+            indicator.innerHTML = `
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            chatMessages.appendChild(indicator);
+            scrollToBottom();
+        }
+
+        // 隐藏加载状态
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        // 滚动到底部
+        function scrollToBottom() {
+            const chatMessages = document.getElementById('chatMessages');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // 键盘事件
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                askQuestion();
+            }
+        }
+
+        // 格式化日期
+        function formatDate(isoString) {
+            const date = new Date(isoString);
+            const now = new Date();
+            const diff = now - date;
+
+            if (diff < 60000) return '刚刚';
+            if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+
+            return date.toLocaleDateString('zh-CN') + ' ' +
+                   date.toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'});
+        }
+    </script>
+</body>
+</html>
