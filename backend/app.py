@@ -20,10 +20,10 @@ from backend.qa.dialogue import DialogueManager
 app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)
 
-# 初始化组件
+# 初始化组件（图谱存储全局唯一实例，保证写入与查询/问答缓存一致）
 nlp_pipeline = NLPPipeline()
-graph_builder = GraphBuilder()
 graph_storage = GraphStorage()
+graph_builder = GraphBuilder(graph_storage)
 graph_query = GraphQuery(graph_storage)
 answer_generator = AnswerGenerator(graph_storage)
 dialogue_manager = DialogueManager()
@@ -141,7 +141,7 @@ def parse_document(doc_id):
     if not os.path.exists(filepath):
         return jsonify({'error': '文档文件不存在'}), 404
 
-    # 构建图谱
+    # 构建图谱（build_from_document 内部会先回收该文档的旧图谱数据，保证重复解析幂等）
     result = graph_builder.build_from_document(filepath, doc_id)
 
     # 保存三元组
@@ -163,6 +163,39 @@ def parse_document(doc_id):
         'relations_count': result['relations_count'],
         'triples': result['triples'][:50],  # 返回前50个三元组
         'entities': result['entities'][:50]
+    })
+
+
+@app.route('/api/documents/<doc_id>', methods=['DELETE'])
+def delete_document(doc_id):
+    """删除文档，并同步清理其生成的三元组与图谱数据"""
+    doc_info_path = os.path.join(DOCUMENTS_DIR, f'{doc_id}.json')
+    if not os.path.exists(doc_info_path):
+        return jsonify({'error': '文档不存在'}), 404
+
+    with open(doc_info_path, 'r', encoding='utf-8') as f:
+        doc = json.load(f)
+
+    # 1. 删除原始文档文件
+    filepath = os.path.join(DOCUMENTS_DIR, doc.get('stored_filename', ''))
+    if doc.get('stored_filename') and os.path.exists(filepath):
+        os.remove(filepath)
+
+    # 2. 删除文档元数据
+    os.remove(doc_info_path)
+
+    # 3. 删除该文档的三元组文件
+    triples_path = os.path.join(TRIPLES_DIR, f'{doc_id}.json')
+    if os.path.exists(triples_path):
+        os.remove(triples_path)
+
+    # 4. 同步回收图谱中该文档产生的实体和关系（其他文档/人工标注引用的保留）
+    cleanup = graph_builder.remove_document_graph(doc_id)
+
+    return jsonify({
+        'success': True,
+        'doc_id': doc_id,
+        'cleanup': cleanup
     })
 
 

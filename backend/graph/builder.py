@@ -1,7 +1,7 @@
 """
 图谱构建模块 - 从文档构建知识图谱
 """
-from typing import List, Dict
+from typing import List, Dict, Optional
 from backend.nlp.pipeline import NLPPipeline
 from backend.graph.storage import GraphStorage
 
@@ -9,12 +9,17 @@ from backend.graph.storage import GraphStorage
 class GraphBuilder:
     """图谱构建器"""
 
-    def __init__(self):
+    def __init__(self, storage: Optional[GraphStorage] = None):
         self.nlp_pipeline = NLPPipeline()
-        self.storage = GraphStorage()
+        # 复用共享的存储实例，保证构建、查询、问答看到同一份缓存数据
+        self.storage = storage or GraphStorage()
 
     def build_from_text(self, text: str, doc_id: str = None) -> Dict:
         """从文本构建图谱"""
+        # 同一文档重复解析前，先回收该文档已有的图谱数据，避免实体计数累加
+        if doc_id:
+            self.storage.remove_document_data(doc_id)
+
         # NLP处理
         result = self.nlp_pipeline.process(text)
 
@@ -51,6 +56,10 @@ class GraphBuilder:
         from backend.utils.text_extractor import extract_text
         text = extract_text(doc_path)
         return self.build_from_text(text, doc_id)
+
+    def remove_document_graph(self, doc_id: str) -> Dict:
+        """删除文档在图谱中产生的实体和关系数据"""
+        return self.storage.remove_document_data(doc_id)
 
     def add_triple(self, subject: str, subject_type: str, predicate: str,
                    obj: str, object_type: str) -> Dict:

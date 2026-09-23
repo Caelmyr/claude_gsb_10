@@ -520,6 +520,7 @@
                         <div class="doc-actions">
                             <button class="btn btn-secondary btn-sm" onclick="viewDocument('${doc.id}')">查看</button>
                             <button class="btn btn-primary btn-sm" onclick="parseDocument('${doc.id}')">解析</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteDocument('${doc.id}', '${doc.filename.replace(/'/g, "\\'")}')">删除</button>
                         </div>
                     </div>
                 `).join('');
@@ -551,6 +552,35 @@
                 showPreview(docId, data.full_text || data.text_preview);
             } catch (error) {
                 console.error('获取文档失败:', error);
+            }
+        }
+
+        // 删除文档
+        async function deleteDocument(docId, filename) {
+            if (!confirm(`确定删除文档「${filename}」吗？\n该文档生成的实体、关系等图谱数据将一并清理。`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/documents/${docId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('文档及其图谱数据已删除');
+                    if (currentDocId === docId) {
+                        currentDocId = null;
+                        document.getElementById('previewArea').innerHTML =
+                            '<div style="text-align:center;color:#888;padding:40px;">选择文档查看预览</div>';
+                    }
+                    loadDocuments();
+                    loadStatistics();
+                } else {
+                    alert('删除失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('删除失败: ' + error.message);
             }
         }
 
