@@ -170,6 +170,7 @@ python run.py
 - `GET /api/documents` - 获取文档列表
 - `GET /api/documents/:id` - 获取文档详情
 - `POST /api/documents/:id/parse` - 解析文档
+- `DELETE /api/documents/:id` - 删除文档（级联清理该文档生成的三元组、实体和关系）
 
 ### 图谱查询
 - `GET /api/graph/data` - 获取图谱数据

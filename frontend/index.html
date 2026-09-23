@@ -520,6 +520,7 @@
                         <div class="doc-actions">
                             <button class="btn btn-secondary btn-sm" onclick="viewDocument('${doc.id}')">查看</button>
                             <button class="btn btn-primary btn-sm" onclick="parseDocument('${doc.id}')">解析</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteDocument('${doc.id}')">删除</button>
                         </div>
                     </div>
                 `).join('');
@@ -557,6 +558,36 @@
         // 显示预览
         function showPreview(docId, text) {
             document.getElementById('previewArea').textContent = text || '无预览内容';
+        }
+
+        // 删除文档（后端会同步清理该文档生成的图谱实体和关系）
+        async function deleteDocument(docId) {
+            if (!confirm('确定删除该文档吗？其解析生成的实体和关系将一并从知识图谱中删除。')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/documents/${docId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    if (currentDocId === docId) {
+                        currentDocId = null;
+                        document.getElementById('previewArea').textContent =
+                            '选择文档查看预览';
+                        document.getElementById('parseResult').innerHTML =
+                            '<div style="text-align:center;color:#888;padding:40px;">上传并解析文档后显示结果</div>';
+                    }
+                    loadDocuments();
+                    loadStatistics();
+                } else {
+                    alert('删除失败: ' + data.error);
+                }
+            } catch (error) {
+                alert('删除失败: ' + error.message);
+            }
         }
 
         // 解析文档

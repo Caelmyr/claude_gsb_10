@@ -9,24 +9,25 @@ from backend.graph.storage import GraphStorage
 class GraphBuilder:
     """图谱构建器"""
 
-    def __init__(self):
+    def __init__(self, storage: GraphStorage = None):
         self.nlp_pipeline = NLPPipeline()
-        self.storage = GraphStorage()
+        self.storage = storage or GraphStorage()
 
     def build_from_text(self, text: str, doc_id: str = None) -> Dict:
         """从文本构建图谱"""
         # NLP处理
         result = self.nlp_pipeline.process(text)
 
-        # 添加实体到图谱
+        # 添加实体到图谱（同一文档内重复出现不累加计数）
         for entity in result['entities']:
             self.storage.add_entity(
                 entity['text'],
                 entity['type'],
-                {'context': entity.get('context', ''), 'doc_id': doc_id}
+                {'context': entity.get('context', '')},
+                doc_id=doc_id
             )
 
-        # 添加关系到图谱
+        # 添加关系到图谱（add_relation 内部保证两端实体存在，不重复计数）
         for relation in result['relations']:
             self.storage.add_relation(
                 relation['subject'],
@@ -34,7 +35,8 @@ class GraphBuilder:
                 relation['predicate'],
                 relation['object'],
                 relation['object_type'],
-                {'source_text': relation.get('source_text', ''), 'doc_id': doc_id}
+                {'source_text': relation.get('source_text', '')},
+                doc_id=doc_id
             )
 
         return {

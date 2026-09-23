@@ -22,8 +22,8 @@ CORS(app)
 
 # 初始化组件
 nlp_pipeline = NLPPipeline()
-graph_builder = GraphBuilder()
 graph_storage = GraphStorage()
+graph_builder = GraphBuilder(graph_storage)
 graph_query = GraphQuery(graph_storage)
 answer_generator = AnswerGenerator(graph_storage)
 dialogue_manager = DialogueManager()
@@ -141,6 +141,9 @@ def parse_document(doc_id):
     if not os.path.exists(filepath):
         return jsonify({'error': '文档文件不存在'}), 404
 
+    # 同一文档重复解析时，先清理上一次解析写入的图谱数据，避免重复累加
+    graph_storage.remove_document_data(doc_id)
+
     # 构建图谱
     result = graph_builder.build_from_document(filepath, doc_id)
 
@@ -163,6 +166,39 @@ def parse_document(doc_id):
         'relations_count': result['relations_count'],
         'triples': result['triples'][:50],  # 返回前50个三元组
         'entities': result['entities'][:50]
+    })
+
+
+@app.route('/api/documents/<doc_id>', methods=['DELETE'])
+def delete_document(doc_id):
+    """删除文档，并级联清理其生成的三元组和图谱数据"""
+    doc_info_path = os.path.join(DOCUMENTS_DIR, f'{doc_id}.json')
+    if not os.path.exists(doc_info_path):
+        return jsonify({'error': '文档不存在'}), 404
+
+    with open(doc_info_path, 'r', encoding='utf-8') as f:
+        doc = json.load(f)
+
+    # 删除原始文档文件
+    stored_path = os.path.join(DOCUMENTS_DIR, doc.get('stored_filename', ''))
+    if os.path.exists(stored_path):
+        os.remove(stored_path)
+
+    # 删除解析生成的三元组文件
+    triples_path = os.path.join(TRIPLES_DIR, f'{doc_id}.json')
+    if os.path.exists(triples_path):
+        os.remove(triples_path)
+
+    # 级联清理图谱中由该文档生成的实体和关系
+    cleanup = graph_storage.remove_document_data(doc_id)
+
+    # 删除文档元信息
+    os.remove(doc_info_path)
+
+    return jsonify({
+        'success': True,
+        'doc_id': doc_id,
+        **cleanup
     })
 
 
